@@ -47,7 +47,7 @@ def parse_args():
                         help='Learning rate (default: 0.001)')
     parser.add_argument('--save', type=bool, default=0,
                         help='Save (default: 0)')
-    parser.add_argument('--path', type=str, default='./data/set_1',
+    parser.add_argument('--path', type=str, default='./test_data/set_1',
                         help='Path to trial data relative to pod-mlp.py')
     parser.add_argument('--verbose', type=bool, default=0,
                         help='Print the structure of the network (default: 0)')
@@ -69,7 +69,8 @@ def main():
     
     # Load data records
     records = load_records(input_path, output_path)
-    stress_vectors = extract_attributes(records, attributes= ['eigenvalue'])
+    records, eigenvalues = extract_attributes(records, attributes= ['eigenvalue'])
+    eigenvalues = eigenvalues['eigenvalue']
 
     # Extract parameters
     parameters = []
@@ -83,6 +84,17 @@ def main():
         ]
         parameters.append(row)
 
-    print(f"Properly loaded dataset:")
-    print(f"    Samples: {len(parameters)}")
-    print(f"    Parameters: {len(parameters[0])}")
+    X = np.array(parameters, dtype=float)
+    y = np.array(eigenvalues, dtype=float)
+
+    '''
+    Beyond this point, we have a dataset that operates as we have defined through the rest of the class:
+        X : n x d (samples x dimensions)
+        y : n x 1 (samples x eigenvalues)
+    '''
+
+    print(X.shape)
+    print(y.shape)
+
+if __name__ == '__main__':
+    main()
