@@ -67,6 +67,8 @@ tree.txt
 *.log
 *.svg
 *.txt
+*.npy
+*.pickle
 
 # OS generated files #
 ######################
