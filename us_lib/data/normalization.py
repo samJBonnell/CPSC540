@@ -91,6 +91,11 @@ class NormalizationHandler:
             result = ((X_norm - self.bounds[0]) * (self.X_max - self.X_min) / (self.bounds[1] - self.bounds[0])) + self.X_min
         return result
 
+    def soft_reset(self):
+        """ Remove the 'matrix_set' flag so that we can iterate the same NormalizationHandler object """
+        self.matrix_set = 0
+        
+
     def _check_dimensions(self, X):
         """Check that the dimensions of the input and output matrix agree"""
         if X.shape[1:] != self.shape[1:]:
@@ -116,6 +121,7 @@ class NormalizationHandler:
             self.std = None
         else:
             return self.bounds[0] + ((X - self.X_min) * (self.bounds[1] - self.bounds[0]) / (self.X_max - self.X_min))
+        
     
     @property
     def X_norm(self):

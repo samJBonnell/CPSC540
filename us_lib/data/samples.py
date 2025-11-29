@@ -3,10 +3,11 @@ samples.py contains code related to the creation of sample sets of data, and can
 into training, validation, and test sets of data.
 """
 # Generic imports
+import os.path
 import numpy as np
 from typing import Optional, Tuple, Generator
 
-def create_folds(X: np.ndarray, num_folds: int = 0, relative_size: Optional[float] = None, save_to_file: bool = False, file_name: Optional[str] = None) -> Optional[np.ndarray]:
+def create_folds(X: np.ndarray, num_folds: int = 0, relative_size: Optional[float] = None, save_to_file: bool = False, file_path: Optional[str] = None) -> Optional[np.ndarray]:
     """
     create_folds takes as input a set of data and creates a mapping in the form of an (N x k) matrix indicating
     whether or not a row (N_i) is part of the training or validation set for each fold (k)
@@ -23,8 +24,8 @@ def create_folds(X: np.ndarray, num_folds: int = 0, relative_size: Optional[floa
         Creates folds using a percentage of the input field instead of a fixed number. 
         Ex. relative_size = 0.2 results in 5 folds. Must be between 0 and 1.
     save_to_file : bool
-        If True, saves the created folds map to the file specified by 'file_name'
-    file_name : str, optional
+        If True, saves the created folds map to the file specified by 'file_path'
+    file_path : str, optional
         The file name to save the folds mapping. Required if save_to_file is True.
         
     Returns:
@@ -32,7 +33,7 @@ def create_folds(X: np.ndarray, num_folds: int = 0, relative_size: Optional[floa
     mask_matrix : np.ndarray
         Array where each column corresponds to a single fold and each row indicates whether the data is
         included in the training set (True) or the validation set (False). 
-        Returns None if save_to_file is True and file_name is not provided.
+        Returns None if save_to_file is True and file_path is not provided.
         
     Raises:
     -------
@@ -57,8 +58,8 @@ def create_folds(X: np.ndarray, num_folds: int = 0, relative_size: Optional[floa
     if num_folds < 2:
         raise ValueError(f"num_folds must be at least 2, got {num_folds}")
     
-    if save_to_file and file_name is None:
-        raise ValueError("file_name must be provided when save_to_file is True")
+    if save_to_file and file_path is None:
+        raise ValueError("file_path must be provided when save_to_file is True")
     
     n, d = X.shape
     
@@ -82,12 +83,19 @@ def create_folds(X: np.ndarray, num_folds: int = 0, relative_size: Optional[floa
     
     # Save to file if requested
     if save_to_file:
-        np.save(file_name, mask_matrix, allow_pickle=True)
+        np.save(file_path, mask_matrix, allow_pickle=True)
     
     return mask_matrix
 
+def load_folds(file_path: Optional[str] = None):
+    """ Load a matrix from a .npy file """
+    if not os.path.isfile(file_path):
+        raise ValueError(f"Requested file ({file_path}) not found.")
 
-def iterate_folds(X: np.ndarray, mask_matrix: np.ndarray) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
+    X = np.load(file_path)
+    return X
+
+def iterate_folds(X: np.ndarray, y: np.ndarray, mask_matrix: np.ndarray) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
     """
     Generator that yields training and validation splits for each fold.
     
@@ -95,6 +103,8 @@ def iterate_folds(X: np.ndarray, mask_matrix: np.ndarray) -> Generator[Tuple[np.
     -----------
     X : np.ndarray
         Dataset to split
+    y : np.ndarray
+        Results dataset to split
     mask_matrix : np.ndarray
         Boolean mask matrix from create_folds where True = training, False = validation
         
@@ -105,9 +115,9 @@ def iterate_folds(X: np.ndarray, mask_matrix: np.ndarray) -> Generator[Tuple[np.
         
     Example:
     --------
-    X = np.random.rand(100, 10)
+    X, y = data_loader()
     masks = create_folds(X, num_folds=5)
-    for fold_idx, (X_train, X_val) in enumerate(iterate_folds(X, masks)):
+    for fold_idx, (X_train, X_val, y_train, y_val) in enumerate(iterate_folds(X, y, masks)):
         print(f"Fold {fold_idx}: train={len(X_train)}, val={len(X_val)}")
     """
     if X.shape[0] != mask_matrix.shape[0]:
@@ -122,4 +132,7 @@ def iterate_folds(X: np.ndarray, mask_matrix: np.ndarray) -> Generator[Tuple[np.
         X_train = X[train_mask]
         X_val = X[val_mask]
         
-        yield (X_train, X_val)
+        y_train = y[train_mask]
+        y_val = y[val_mask]
+
+        yield (X_train, X_val, y_train, y_val)

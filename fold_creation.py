@@ -28,7 +28,7 @@ from us_lib.data.reader import load_records
 from us_lib.data.parsing import extract_attributes
 from us_lib.models.cnn import EncoderDecoderNetwork
 from us_lib.visuals import plot_field
-from us_lib.data.samples import create_folds, iterate_folds
+from us_lib.data.samples import create_folds, iterate_folds, load_folds
 from data_loader import data_loader
 
 def parse_args():
@@ -57,9 +57,7 @@ def main():
     args = parse_args()
     X, y = data_loader(args.path)
 
-    mask_matrix = create_folds(X, 10, save_to_file=True, file_name='test')
-    with np.printoptions(threshold=np.inf, linewidth=np.inf):
-        print(mask_matrix)
+    _= create_folds(X, 10, save_to_file=False, file_path='folds_r0')
 
 if __name__ == '__main__':
     main()
