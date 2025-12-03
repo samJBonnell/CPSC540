@@ -98,26 +98,28 @@ class EncoderDecoderNetwork(nn.Module):
 
 # CNN Encoder to Vector Block to replace the EncoderDecoder network from earlier
 class EncoderToVector(nn.Module):
-    def __init__(self, input_channels=1, N=10):
+    def __init__(self, input_channels=5, N=5):
         super(EncoderToVector, self).__init__()
         self.encoder = EncoderBlock(input_channels=input_channels)
         self.bridge = Bridge()
         
-        # Calculate the spatial dimensions after encoder
-        # For 256x256 input: after 4 poolings with stride 2, 16x16
-        # With 512 channels: 512 * 16 * 16 = 131072
+        # Global average pooling reduces spatial dimensions
+        self.gap = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten()
         
-        # Adjust this based on your actual input size
-        # If input is HxW, after 4 stride-2 poolings: (H/16) * (W/16) * 512
-        self.fc1 = nn.Linear(512 * 16 * 16, 512)  # Adjust first dimension
-        self.fc2 = nn.Linear(512, N)  # Output N values
+        # Map from 512 features to N output predictions
+        self.fc1 = nn.Linear(512, 256)
+        self.fc2 = nn.Linear(256, N)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
     
     def forward(self, x):
+        # x shape: [N, 5, Y, Y]
         enc_out = self.encoder(x)
         bridge_out = self.bridge(enc_out)
-        flat = self.flatten(bridge_out)
+        pooled = self.gap(bridge_out)
+        flat = self.flatten(pooled)
         x = self.relu(self.fc1(flat))
+        x = self.dropout(x)
         out = self.fc2(x)
         return out
