@@ -36,3 +36,31 @@ def data_loader(path : str):
     y = np.array(eigenvalues, dtype=float)
 
     return X, y
+
+def create_cnn_matrix(X : np.ndarray = None, rows : int = None, cols : int = None):
+    """
+    create_cnn_matrix takes as input a set of input and output data and creates set of CNN-compatible np.ndarrays as its return values
+    
+    Parameters:
+    -----------
+    X : np.ndarray (default : None)
+        2D array corresponding to the input space where each column is a features
+    rows : int (default : None)
+        Number of rows in the output data structure
+    cols : int (default : None)
+        Number of cols in the output data structure
+    
+    Returns:
+    --------
+    X_cnn : np.ndarray
+        4D matrix of size (X.shape[1] x X.shape[0] x rows x cols) where each layer X_cnn[i, j, :, :] = np.ones_like(X_cnn[i,j,:,:]) * X[i, j]
+    
+    """
+    
+    template_convolution = np.ones(shape=(rows, cols), dtype=float)
+    X_cnn = np.ndarray(shape=(X.shape[0], X.shape[1], rows, cols))
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            X_cnn[i, j, :, :] = (template_convolution.copy()) * X[i, j]
+    
+    return X_cnn
