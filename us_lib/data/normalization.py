@@ -122,7 +122,6 @@ class NormalizationHandler:
         else:
             return self.bounds[0] + ((X - self.X_min) * (self.bounds[1] - self.bounds[0]) / (self.X_max - self.X_min))
         
-    
     @property
     def X_norm(self):
         return self._X_norm
@@ -140,3 +139,54 @@ class NormalizationHandler:
         elif self.method == 'bounds':
             params['bounds'] = torch.tensor(self.bounds, dtype=torch.float32, device=device)
         return params
+    
+    def get_state(self):
+        """Get the state dictionary for saving"""
+        state = {
+            'method': self.method,
+            'bounds': self.bounds,
+            'excluded_axis': self.excluded_axis,
+            'matrix_set': self.matrix_set,
+            'shape': self.shape if hasattr(self, 'shape') else None,
+            'dim': self.dim if hasattr(self, 'dim') else None,
+            'axis': self.axis if hasattr(self, 'axis') else None,
+        }
+        
+        if self.method == 'std':
+            state['mean'] = self.mean
+            state['std'] = self.std
+        elif self.method == 'bounds':
+            state['X_min'] = self.X_min
+            state['X_max'] = self.X_max
+        
+        return state
+
+    @classmethod
+    def from_state(cls, state):
+        """Reconstruct NormalizationHandler from saved state"""
+        handler = cls(
+            method=state['method'],
+            bounds=state['bounds'],
+            excluded_axis=state['excluded_axis']
+        )
+        
+        handler.matrix_set = state['matrix_set']
+        handler.shape = state['shape']
+        handler.dim = state['dim']
+        handler.axis = state['axis']
+        
+        if state['method'] == 'std':
+            handler.mean = state['mean']
+            handler.std = state['std']
+            handler.X_min = None
+            handler.X_max = None
+        elif state['method'] == 'bounds':
+            handler.X_min = state['X_min']
+            handler.X_max = state['X_max']
+            handler.mean = None
+            handler.std = None
+
+        # Set the matrix flag to true so we can use the normalization
+        handler.matrix_set = 1
+        
+        return handler

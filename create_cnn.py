@@ -50,7 +50,9 @@ def parse_args():
     parser.add_argument('--path', type=str, default='./test_data/set_1',
                         help='Path to trial data relative to create_cnn.py')
     parser.add_argument('--verbose', type=bool, default=0,
-                        help='Print the structure of the network (default: 0)')
+                        help='Print the structure of the network and test results (default: 0)')
+    parser.add_argument('--model_name', type=str, default='0',
+                        help='The name under which the model will be saved (default: 0)')
     
     return parser.parse_args()
 
@@ -88,8 +90,6 @@ def main():
     # -------------------------------------------------------------------------------------------------------------------------
     convolution_size = 80
     X = create_cnn_matrix(X, convolution_size, convolution_size)
-    
-    print(f"Data shape: X={X.shape}, y={y.shape}")
 
     # -------------------------------------------------------------------------------------------------------------------------
     # Create Model
@@ -194,35 +194,34 @@ def main():
     model.load_state_dict(best_model_state)
     
     # Final test on last validation set
-    model.eval()
-    with torch.no_grad():
-        outputs = model(X_val)
-        
-        # Denormalize for comparison
-        outputs_denorm = y_normalizer.denormalize(outputs.cpu().numpy())
-        y_val_denorm = y_normalizer.denormalize(y_val.cpu().numpy())
-        
-        print("Sample Predictions vs Actual (first 5 samples):")
-        print(f"{'Predicted':<50} {'Actual':<50}")
-        print("-" * 100)
-        for i in range(min(5, len(outputs_denorm))):
-            pred_str = np.array2string(outputs_denorm[i], precision=3, suppress_small=True)
-            actual_str = np.array2string(y_val_denorm[i], precision=3, suppress_small=True)
-            print(f"{pred_str:<50} {actual_str:<50}")
+
+    if args.verbose == 1:
+        model.eval()
+        with torch.no_grad():
+            outputs = model(X_val)
+            
+            # Denormalize for comparison
+            outputs_denorm = y_normalizer.denormalize(outputs.cpu().numpy())
+            y_val_denorm = y_normalizer.denormalize(y_val.cpu().numpy())
+            
+            print("Sample Predictions vs Actual (first 5 samples):")
+            print(f"{'Predicted':<50} {'Actual':<50}")
+            print("-" * 100)
+            for i in range(min(5, len(outputs_denorm))):
+                pred_str = np.array2string(outputs_denorm[i], precision=3, suppress_small=True)
+                actual_str = np.array2string(y_val_denorm[i], precision=3, suppress_small=True)
+                print(f"{pred_str:<50} {actual_str:<50}")
 
     # Save model if requested
     if args.save == 1:
         os.makedirs('models', exist_ok=True)
-        save_path = f'models/cnn_model_{timestamp}.pth'
         torch.save({
-            'model_state_dict': best_model_state,
-            'input_channels': num_features,
-            'output_size': y.shape[1],
-            'convolution_size': convolution_size,
-            'best_val_error': best_model_error,
-            'avg_val_error': average_error,
-        }, save_path)
-        print(f"\nModel saved to: {save_path}")
+            'model_state_dict': model.state_dict(),
+            'input_channels': model.input_channels,
+            'N': model.N,
+            'X_normalizer_state': X_normalizer.get_state(),
+            'y_normalizer_state': y_normalizer.get_state()
+        }, f'models/cnn_{args.model_name}.pth')
 
     writer.close()
 

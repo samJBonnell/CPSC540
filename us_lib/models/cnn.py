@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 import numpy as np
+from us_lib.data.normalization import NormalizationHandler
 
 class EncoderBlock(nn.Module):
     def __init__(self, input_channels = 1):
@@ -95,7 +96,6 @@ class EncoderDecoderNetwork(nn.Module):
         
         return out
     
-
 # CNN Encoder to Vector Block to replace the EncoderDecoder network from earlier
 class EncoderToVector(nn.Module):
     def __init__(self, input_channels=5, N=5):
@@ -123,3 +123,17 @@ class EncoderToVector(nn.Module):
         x = self.dropout(x)
         out = self.fc2(x)
         return out
+    
+    @classmethod
+    def load(cls, path):
+        checkpoint = torch.load(path, weights_only=False)
+        model = cls(
+            input_channels=checkpoint['input_channels'],
+            N=checkpoint['N']
+        )
+        model.load_state_dict(checkpoint['model_state_dict'])
+
+        X_normalizer = NormalizationHandler.from_state(checkpoint['X_normalizer_state'])
+        y_normalizer = NormalizationHandler.from_state(checkpoint['y_normalizer_state'])
+
+        return model, X_normalizer, y_normalizer
