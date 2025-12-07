@@ -28,7 +28,6 @@
 *.log
 *.sql
 *.sqlite
-*.pth
 
 # Abaqus output and model files #
 ######################

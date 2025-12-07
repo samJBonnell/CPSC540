@@ -100,6 +100,10 @@ class EncoderDecoderNetwork(nn.Module):
 class EncoderToVector(nn.Module):
     def __init__(self, input_channels=5, N=5):
         super(EncoderToVector, self).__init__()
+
+        self.input_channels = input_channels
+        self.N = N
+
         self.encoder = EncoderBlock(input_channels=input_channels)
         self.bridge = Bridge()
         
