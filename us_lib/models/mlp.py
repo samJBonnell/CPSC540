@@ -32,6 +32,7 @@ class MLP(nn.Module):
             x = self.dropout(x)
         x = self.layers[-1](x)
         return x
+        
     
     @classmethod
     def load(cls, checkpoint_path):

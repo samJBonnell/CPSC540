@@ -71,6 +71,9 @@ class NormalizationHandler:
         """
         Normalize a separate set of data by the same values as the original set
         """
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+
         if self.matrix_set == 0:
             raise ValueError("Transformation not set\nPlease run X.fit() or X.fit_normalize() first.")
         self._check_dimensions(X)
@@ -79,17 +82,29 @@ class NormalizationHandler:
 
     def denormalize(self, X_norm):
         """Denormalize data back to the original scale"""
-        if X_norm.ndim == 1 and hasattr(self, "shape") and len(self.shape) == 2:
+        
+        if self.matrix_set == 0:
+            raise ValueError("Transformation not set\nPlease run X.fit() or X.fit_normalize() first.")
+
+        X_norm = np.asarray(X_norm)
+
+        while X_norm.ndim > 2:
+            X_norm = np.squeeze(X_norm, axis=0)
+
+        if X_norm.ndim == 1:
             X_norm = X_norm.reshape(1, -1)
-        if X_norm.ndim == 2 and hasattr(self, "shape") and len(self.shape) == 3:
-            X_norm = X_norm.reshape(1, *X_norm.shape)
 
         self._check_dimensions(X_norm)
         if self.method == 'std':
-            result = (X_norm * self.std) + self.mean
+            return (X_norm * self.std) + self.mean
         elif self.method == 'bounds':
-            result = ((X_norm - self.bounds[0]) * (self.X_max - self.X_min) / (self.bounds[1] - self.bounds[0])) + self.X_min
-        return result
+            return (
+                ((X_norm - self.bounds[0]) *
+                (self.X_max - self.X_min) /
+                (self.bounds[1] - self.bounds[0])) +
+                self.X_min
+            )
+
 
     def soft_reset(self):
         """ Remove the 'matrix_set' flag so that we can iterate the same NormalizationHandler object """

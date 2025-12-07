@@ -50,7 +50,7 @@ def main():
     elif "mlp" in args.model_name:
         model, X_normalizer, y_normalizer= MLP.load(f'models/{args.model_name}.pth')
     else:
-        raise ValueError(f"{args.model_name} is not a viable model.")
+        raise ValueError(f"{args.model_name} is not a viable model. Must contain 'cnn' or 'mlp'.")
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
