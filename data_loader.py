@@ -22,9 +22,10 @@ def data_loader(path : str):
 
     # Extract parameters
     parameters = []
+
     for rec in records:
         row = [
-            # rec.input.num_longitudinal,
+            rec.input.num_longitudinal,
             rec.input.t_panel,                    
             rec.input.t_longitudinal_web,       
             rec.input.t_longitudinal_flange,

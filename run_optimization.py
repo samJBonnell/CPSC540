@@ -32,20 +32,20 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class EigenBuckling_MassProblem(ElementwiseProblem):
     def __init__(self):
-        super().__init__(n_var=5,
+        super().__init__(n_var=6,
                         n_obj=2,
                         n_ieq_constr=0,
-                        # xl=np.array([1.0, 0.001, 0.001, 0.001, 0.025, 0.050]),
-                        # xu=np.array([8.0, 0.010, 0.010, 0.010, 0.500, 0.125])
-                        xl=np.array([0.001, 0.001, 0.001, 0.025, 0.050]),
-                        xu=np.array([0.010, 0.010, 0.010, 0.500, 0.125])
+                        xl=np.array([1.0, 0.001, 0.001, 0.001, 0.025, 0.050]),
+                        xu=np.array([8.0, 0.010, 0.010, 0.010, 0.500, 0.125])
+                        # xl=np.array([0.001, 0.001, 0.001, 0.025, 0.050]),
+                        # xu=np.array([0.010, 0.010, 0.010, 0.500, 0.125])
                         )
     
     def _evaluate(self, x, out, *args, **kwargs):
         global model, X_normalizer, y_normalizer, model_type, convolution_size, device
         
         x_copy = np.array(x)
-        # x_copy[0] = int(x_copy[0])
+        x_copy[0] = int(x_copy[0])
         
         # For CNN, create the convolution matrix
         if model_type == "cnn":
@@ -70,8 +70,8 @@ class EigenBuckling_MassProblem(ElementwiseProblem):
                 predictions = y_normalizer.denormalize(predictions.unsqueeze(0).cpu().numpy())
         
         # Mass
-        # mass = 4130 * (x[4]*x[2] + x[5]*x[3] + x[1]*3) * 3
-        mass = 4130 * (x[3]*x[1] + x[4]*x[2] + x[0]*3) * 3
+        mass = 4130 * (x[4]*x[2] + x[5]*x[3] + x[1]*3) * 3
+        # mass = 4130 * (x[3]*x[1] + x[4]*x[2] + x[0]*3) * 3
 
         # First eigen_mode
         eigen_buckling = predictions[0][0] if len(predictions) > 0 else 1.0
@@ -126,6 +126,7 @@ def main():
     args = parse_args()
     
     print(f"Loading model: {args.model_name}")
+    var_names = ['num_longitudinal', 't_panel', 't_longitudinal_web', 't_longitudinal_flange', 'h_longitudinal_web', 'w_longitudinal_flange']
 
     # Load the appropriate model
     if "cnn" in args.model_name:
@@ -202,9 +203,8 @@ def main():
     if args.plot:
         print("\nGenerating plots...")
         plot_pareto_front(res.F, args.output_name)
-        # plot_solution_space(res.X, res.F, args.output_name)
+        plot_solution_space(res.X, res.F, args.output_name, var_names=var_names)
         print(f"Plots saved as {args.output_name}_pareto.png and {args.output_name}_solutions.png")
-
 
 def plot_pareto_front(F, output_name):
     """
@@ -246,44 +246,57 @@ def plot_pareto_front(F, output_name):
     plt.savefig(f'opt_results/{output_name}_pareto.png', dpi=300, bbox_inches='tight')
     plt.close()
 
-
-def plot_solution_space(X, F, output_name):
+def plot_solution_space(X, F, output_name, var_names=None):
     """
-    Plot the solution space showing design variables
+    Plot the solution space showing design variables (works for any N variables)
     
     Args:
-        X: Design variables (N x 5 array)
-        F: Objective values (N x 2 array) for coloring
+        X: Design variables (N x D array) where D is number of design variables
+        F: Objective values (N x 2 array) for coloring [mass, buckling]
         output_name: Base name for output file
+        var_names: Optional list of variable names. If None, uses generic names
     """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
     
-    var_names = ['t_panel', 't_longitudinal_web', 't_longitudinal_flange', 'h_longitudinal_web', 'w_longitudinal_flange']
+    n_samples, n_vars = X.shape
+    
+    # Generate variable names if not provided
+    if var_names is None:
+        var_names = [f'Var_{i+1}' for i in range(n_vars)]
+    elif len(var_names) != n_vars:
+        print(f"Warning: Expected {n_vars} variable names, got {len(var_names)}. Using generic names.")
+        var_names = [f'Var_{i+1}' for i in range(n_vars)]
     
     # Create a figure with multiple subplots
     fig = plt.figure(figsize=(16, 10))
     
     # 1. Design variables colored by mass
     ax1 = fig.add_subplot(2, 3, 1)
-    for i in range(5):
+    for i in range(n_vars):
         scatter = ax1.scatter(range(len(X)), X[:, i], c=F[:, 0], s=30, alpha=0.6, 
                              cmap='viridis', label=var_names[i])
     ax1.set_xlabel('Solution Index', fontweight='bold')
     ax1.set_ylabel('Design Variable Value', fontweight='bold')
     ax1.set_title('Design Variables (colored by mass)', fontweight='bold')
-    ax1.legend(loc='best', fontsize=8)
+    # Only show legend if not too many variables
+    if n_vars <= 10:
+        ax1.legend(loc='best', fontsize=8, ncol=2 if n_vars > 5 else 1)
     ax1.grid(True, alpha=0.3)
     cbar1 = plt.colorbar(scatter, ax=ax1)
     cbar1.set_label('Mass (kg)', fontweight='bold')
     
     # 2. Design variables colored by buckling
     ax2 = fig.add_subplot(2, 3, 2)
-    for i in range(5):
+    for i in range(n_vars):
         scatter = ax2.scatter(range(len(X)), X[:, i], c=-F[:, 1], s=30, alpha=0.6, 
                              cmap='plasma', label=var_names[i])
     ax2.set_xlabel('Solution Index', fontweight='bold')
     ax2.set_ylabel('Design Variable Value', fontweight='bold')
     ax2.set_title('Design Variables (colored by buckling)', fontweight='bold')
-    ax2.legend(loc='best', fontsize=8)
+    if n_vars <= 10:
+        ax2.legend(loc='best', fontsize=8, ncol=2 if n_vars > 5 else 1)
     ax2.grid(True, alpha=0.3)
     cbar2 = plt.colorbar(scatter, ax=ax2)
     cbar2.set_label('Buckling Load', fontweight='bold')
@@ -293,34 +306,55 @@ def plot_solution_space(X, F, output_name):
     # Normalize design variables to [0, 1] for better visualization
     X_norm = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0) + 1e-10)
     for i in range(len(X_norm)):
-        ax3.plot(range(5), X_norm[i], alpha=0.3, linewidth=0.5)
-    ax3.set_xticks(range(5))
-    ax3.set_xticklabels(var_names, rotation=45, ha='right')
+        ax3.plot(range(n_vars), X_norm[i], alpha=0.3, linewidth=0.5)
+    ax3.set_xticks(range(n_vars))
+    ax3.set_xticklabels(var_names, rotation=45, ha='right', fontsize=8)
     ax3.set_ylabel('Normalized Value', fontweight='bold')
     ax3.set_title('Parallel Coordinates Plot', fontweight='bold')
     ax3.grid(True, alpha=0.3)
     
-    # 4. 3D scatter: First 3 design variables
+    # 4. 3D scatter: First 3 design variables (if we have at least 3)
     ax4 = fig.add_subplot(2, 3, 4, projection='3d')
-    scatter4 = ax4.scatter(X[:, 0], X[:, 1], X[:, 2], c=F[:, 0], s=50, 
-                          alpha=0.6, cmap='viridis', edgecolors='black', linewidth=0.5)
-    ax4.set_xlabel(var_names[0], fontweight='bold')
-    ax4.set_ylabel(var_names[1], fontweight='bold')
-    ax4.set_zlabel(var_names[2], fontweight='bold')
-    ax4.set_title('3D Design Space (Thicknesses)', fontweight='bold')
-    cbar4 = plt.colorbar(scatter4, ax=ax4, pad=0.1, shrink=0.8)
-    cbar4.set_label('Mass (kg)', fontweight='bold')
+    if n_vars >= 3:
+        scatter4 = ax4.scatter(X[:, 0], X[:, 1], X[:, 2], c=F[:, 0], s=50, 
+                              alpha=0.6, cmap='viridis', edgecolors='black', linewidth=0.5)
+        ax4.set_xlabel(var_names[0], fontweight='bold', fontsize=9)
+        ax4.set_ylabel(var_names[1], fontweight='bold', fontsize=9)
+        ax4.set_zlabel(var_names[2], fontweight='bold', fontsize=9)
+        ax4.set_title('3D Design Space (First 3 Variables)', fontweight='bold')
+        cbar4 = plt.colorbar(scatter4, ax=ax4, pad=0.1, shrink=0.8)
+        cbar4.set_label('Mass (kg)', fontweight='bold')
+    elif n_vars == 2:
+        scatter4 = ax4.scatter(X[:, 0], X[:, 1], F[:, 0], c=F[:, 0], s=50,
+                              alpha=0.6, cmap='viridis', edgecolors='black', linewidth=0.5)
+        ax4.set_xlabel(var_names[0], fontweight='bold', fontsize=9)
+        ax4.set_ylabel(var_names[1], fontweight='bold', fontsize=9)
+        ax4.set_zlabel('Mass (kg)', fontweight='bold', fontsize=9)
+        ax4.set_title('3D: Variables + Mass', fontweight='bold')
+        cbar4 = plt.colorbar(scatter4, ax=ax4, pad=0.1, shrink=0.8)
+        cbar4.set_label('Mass (kg)', fontweight='bold')
+    else:
+        ax4.text(0.5, 0.5, 0.5, 'Need at least 2 variables\nfor 3D plot',
+                ha='center', va='center', fontsize=12)
+        ax4.set_title('3D Plot (Insufficient Variables)', fontweight='bold')
     
     # 5. Box plots for each design variable
     ax5 = fig.add_subplot(2, 3, 5)
-    box_data = [X[:, i] for i in range(5)]
+    box_data = [X[:, i] for i in range(n_vars)]
     bp = ax5.boxplot(box_data, tick_labels=var_names, patch_artist=True)
-    for patch, color in zip(bp['boxes'], plt.cm.Set3(range(5))):
+    
+    # Use color cycling for many variables
+    colors = plt.cm.Set3(np.linspace(0, 1, max(n_vars, 12)))
+    for patch, color in zip(bp['boxes'], colors):
         patch.set_facecolor(color)
+    
     ax5.set_ylabel('Value', fontweight='bold')
     ax5.set_title('Distribution of Design Variables', fontweight='bold')
     ax5.tick_params(axis='x', rotation=45)
     ax5.grid(True, alpha=0.3, axis='y')
+    # Adjust label size for many variables
+    if n_vars > 10:
+        ax5.tick_params(axis='x', labelsize=7)
     
     # 6. Correlation heatmap between design variables and objectives
     ax6 = fig.add_subplot(2, 3, 6)
@@ -328,25 +362,36 @@ def plot_solution_space(X, F, output_name):
     combined = np.hstack([X, F])
     corr_matrix = np.corrcoef(combined.T)
     im = ax6.imshow(corr_matrix, cmap='coolwarm', vmin=-1, vmax=1, aspect='auto')
+    
     labels = var_names + ['Mass', 'Buckling (neg)']
-    ax6.set_xticks(range(7))
-    ax6.set_yticks(range(7))
-    ax6.set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
-    ax6.set_yticklabels(labels, fontsize=9)
+    ax6.set_xticks(range(n_vars + 2))
+    ax6.set_yticks(range(n_vars + 2))
+    
+    # Adjust font size based on number of variables
+    fontsize = max(6, min(9, 100 // (n_vars + 2)))
+    ax6.set_xticklabels(labels, rotation=45, ha='right', fontsize=fontsize)
+    ax6.set_yticklabels(labels, fontsize=fontsize)
     ax6.set_title('Correlation Matrix', fontweight='bold')
     
-    # Add correlation values
-    for i in range(7):
-        for j in range(7):
-            text = ax6.text(j, i, f'{corr_matrix[i, j]:.2f}',
-                          ha="center", va="center", color="black", fontsize=7)
+    # Add correlation values (only if not too many variables)
+    if n_vars <= 8:
+        text_fontsize = max(5, min(7, 80 // (n_vars + 2)))
+        for i in range(n_vars + 2):
+            for j in range(n_vars + 2):
+                text = ax6.text(j, i, f'{corr_matrix[i, j]:.2f}',
+                              ha="center", va="center", color="black", 
+                              fontsize=text_fontsize)
     
     cbar6 = plt.colorbar(im, ax=ax6)
     cbar6.set_label('Correlation', fontweight='bold')
     
     plt.tight_layout()
-    plt.savefig(f'{output_name}_solutions.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'opt_results/{output_name}_solutions.png', dpi=300, bbox_inches='tight')
     plt.close()
+    
+    print(f"Solution space plot saved to {output_name}_solutions.png")
+    print(f"  - Number of design variables: {n_vars}")
+    print(f"  - Number of solutions: {n_samples}")
 
 if __name__ == '__main__':
     main()

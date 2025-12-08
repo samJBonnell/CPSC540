@@ -66,8 +66,16 @@ def plot_pareto_comparison(file_paths, labels=None, objective_names=None, figsiz
 file_paths = [
     # 'opt_results/mlp_0_1000_F.npy',
     # 'opt_results/mlp_1_1000_F.npy',
-    'opt_results/mlp_2_10000_F.npy',
-    'opt_results/cnn_0_1000_F.npy',
+    # 'opt_results/mlp_2_10000_F.npy',
+    # 'opt_results/cnn_0_200_F.npy',
+    # 'opt_results/cnn_1_200_F.npy',
+    # 'opt_results/cnn_2_200_F.npy',
+    # 'opt_results/mlp_0_200_F.npy',
+    # 'opt_results/mlp_1_200_F.npy',
+    # 'opt_results/mlp_2_200_F.npy',
+    # 'opt_results/mlp_3_2000_F.npy',
+    'opt_results/mlp_3_20000_F.npy',
+    'opt_results/mlp_4_20000_F.npy',
 ]
 
 objective_names = ['Mass (kg)', 'Buckling Strength (MN)']
