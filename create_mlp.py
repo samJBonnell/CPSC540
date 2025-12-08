@@ -125,6 +125,7 @@ def main():
         return
     
     X, y = data_loader(args.path)
+    # parameter_names = ["num_longitudinal", "t_panel", "t_longitudinal_web", "t_longitudinal_flange", "t_transverse_web", "t_transverse_flange"]
     parameter_names = ["t_panel", "t_longitudinal_web", "t_longitudinal_flange", "t_transverse_web", "t_transverse_flange"]
 
     print(f"\nTotal samples: {X.shape[0]}")
@@ -225,7 +226,7 @@ def main():
     ).to(device)
     
     if args.verbose:
-        summary(final_model, input_size=(1, 5))
+        summary(final_model, input_size=(1, len(parameter_names)))
     
     num_params = sum(p.numel() for p in final_model.parameters())
     print(f"\nNumber of parameters: {num_params:,}")

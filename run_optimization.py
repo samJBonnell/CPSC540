@@ -35,21 +35,23 @@ class EigenBuckling_MassProblem(ElementwiseProblem):
         super().__init__(n_var=5,
                         n_obj=2,
                         n_ieq_constr=0,
+                        # xl=np.array([1.0, 0.001, 0.001, 0.001, 0.025, 0.050]),
+                        # xu=np.array([8.0, 0.010, 0.010, 0.010, 0.500, 0.125])
                         xl=np.array([0.001, 0.001, 0.001, 0.025, 0.050]),
-                        xu=np.array([0.010, 0.010, 0.010, 0.500, 0.125]))
+                        xu=np.array([0.010, 0.010, 0.010, 0.500, 0.125])
+                        )
     
     def _evaluate(self, x, out, *args, **kwargs):
         global model, X_normalizer, y_normalizer, model_type, convolution_size, device
         
+        x_copy = np.array(x)
+        # x_copy[0] = int(x_copy[0])
+        
         # For CNN, create the convolution matrix
         if model_type == "cnn":
-            x_input = create_cnn_matrix(x, convolution_size, convolution_size)
+            x_input = create_cnn_matrix(x_copy, convolution_size, convolution_size)
         else:
-            x_input = x
-
-        # print("x_input BEFORE reshape(1,-1):", x_input.shape)
-        x_input = x_input.reshape(1,-1)
-        # print("x_input AFTER reshape(1,-1):", x_input.shape)
+            x_input = x_copy
 
         # Normalize input
         if X_normalizer is not None:
@@ -68,6 +70,7 @@ class EigenBuckling_MassProblem(ElementwiseProblem):
                 predictions = y_normalizer.denormalize(predictions.unsqueeze(0).cpu().numpy())
         
         # Mass
+        # mass = 4130 * (x[4]*x[2] + x[5]*x[3] + x[1]*3) * 3
         mass = 4130 * (x[3]*x[1] + x[4]*x[2] + x[0]*3) * 3
 
         # First eigen_mode

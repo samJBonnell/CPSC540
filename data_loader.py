@@ -24,6 +24,7 @@ def data_loader(path : str):
     parameters = []
     for rec in records:
         row = [
+            # rec.input.num_longitudinal,
             rec.input.t_panel,                    
             rec.input.t_longitudinal_web,       
             rec.input.t_longitudinal_flange,
@@ -56,6 +57,9 @@ def create_cnn_matrix(X : np.ndarray = None, rows : int = None, cols : int = Non
         4D matrix of size (X.shape[1] x X.shape[0] x rows x cols) where each layer X_cnn[i, j, :, :] = np.ones_like(X_cnn[i,j,:,:]) * X[i, j]
     
     """
+
+    if X.ndim == 1:
+        X = X.reshape(1, -1)
     
     template_convolution = np.ones(shape=(rows, cols), dtype=float)
     X_cnn = np.ndarray(shape=(X.shape[0], X.shape[1], rows, cols))

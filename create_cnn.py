@@ -63,6 +63,16 @@ def parse_args():
     parser.add_argument('--conv_size', type=int, default=80,
                         help='Size of convolutional input matrix (default: 80)')
     
+    # Architecture hyperparameters
+    parser.add_argument('--channels', type=int, nargs='+', default=[32, 64, 128, 256],
+                        help='Channel sizes for encoder blocks (default: 32 64 128 256)')
+    parser.add_argument('--bridge_channels', type=int, default=512,
+                        help='Number of channels in bridge layer (default: 512)')
+    parser.add_argument('--fc_hidden', type=int, default=256,
+                        help='Hidden dimension for fully connected layer (default: 256)')
+    parser.add_argument('--dropout', type=float, default=0.5,
+                        help='Dropout rate (default: 0.5)')
+    
     return parser.parse_args()
 
 def train_model(model, train_loader, criterion, optimizer, device, epochs, writer=None, epoch_offset=0, desc="Training"):
@@ -109,6 +119,11 @@ def main():
     print(f"  - Batch size: {args.batch_size}")
     print(f"  - Learning rate: {args.learning_rate}")
     print(f"  - Convolution size: {args.conv_size}x{args.conv_size}")
+    print(f"  - Architecture:")
+    print(f"    - Encoder channels: {args.channels}")
+    print(f"    - Bridge channels: {args.bridge_channels}")
+    print(f"    - FC hidden: {args.fc_hidden}")
+    print(f"    - Dropout: {args.dropout}")
     print(f"  - Use cross-validation: {bool(args.use_cv)}")
     if args.use_cv:
         print(f"  - Number of folds: {args.n_folds}")
@@ -169,8 +184,15 @@ def main():
             
             print(f"  Train: {X_train.shape[0]} samples, Val: {X_val.shape[0]} samples")
             
-            # Create new model for this fold
-            model = EncoderToVector(input_channels=num_features, N=y.shape[1]).to(device)
+            # Create new model for this fold with configurable architecture
+            model = EncoderToVector(
+                input_channels=num_features,
+                channels=args.channels,
+                N=y.shape[1],
+                bridge_channels=args.bridge_channels,
+                fc_hidden=args.fc_hidden,
+                dropout=args.dropout
+            ).to(device)
             optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
             
             # Create fresh normalizers for this fold
@@ -217,8 +239,15 @@ def main():
     print("PHASE 2: Training Final Model on All Training Data")
     print("="*80)
     
-    # Create fresh model for final training
-    final_model = EncoderToVector(input_channels=num_features, N=y.shape[1]).to(device)
+    # Create fresh model for final training with configurable architecture
+    final_model = EncoderToVector(
+        input_channels=num_features,
+        channels=args.channels,
+        N=y.shape[1],
+        bridge_channels=args.bridge_channels,
+        fc_hidden=args.fc_hidden,
+        dropout=args.dropout
+    ).to(device)
     
     if args.verbose:
         summary(final_model, input_size=(1, num_features, args.conv_size, args.conv_size))
@@ -293,20 +322,22 @@ def main():
         save_dict = {
             'model_state_dict': final_model.state_dict(),
             'input_channels': final_model.input_channels,
+            'channels': final_model.channels,
             'N': final_model.N,
+            'bridge_channels': final_model.bridge_channels,
+            'fc_hidden': final_model.fc_hidden,
+            'dropout': final_model.dropout_rate,
             'X_normalizer_state': X_normalizer_final.get_state(),
             'y_normalizer_state': y_normalizer_final.get_state(),
             'test_loss': test_loss,
             'random_state': args.random_state,
             'conv_size': args.conv_size
         }
-        
         if args.use_cv:
             save_dict['cv_mean_error'] = mean_cv_error
             save_dict['cv_std_error'] = std_cv_error
             save_dict['fold_errors'] = fold_errors
             save_dict['n_folds'] = args.n_folds
-        
         torch.save(save_dict, f'models/cnn_{args.model_name}.pth')
         print(f"Model saved to models/cnn_{args.model_name}.pth\n")
     
