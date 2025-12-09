@@ -62,6 +62,8 @@ def parse_args():
                         help='Fraction of data to hold out for final test set (default: 0.2)')
     parser.add_argument('--random_state', type=int, default=42,
                         help='Random state for reproducible splits (default: 42)')
+    parser.add_argument('--dropout', type=float, default=0.05,
+                        help='Dropout probability (default: 0.05)')
     
     return parser.parse_args()
 
@@ -168,7 +170,7 @@ def main():
                 num_layers=args.num_layers,
                 layer_size=args.layer_size,
                 output_size=5,
-                dropout=0.05
+                dropout=args.dropout
             ).to(device)
             
             optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)

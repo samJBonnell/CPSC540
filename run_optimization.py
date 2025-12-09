@@ -70,7 +70,7 @@ class EigenBuckling_MassProblem(ElementwiseProblem):
                 predictions = y_normalizer.denormalize(predictions.unsqueeze(0).cpu().numpy())
         
         # Mass
-        mass = 4130 * (x[4]*x[2] + x[5]*x[3] + x[1]*3) * 3
+        mass = 4130 * (x[0]*(x[4]*x[2] + x[5]*x[3]) + x[1]*3) * 3
         # mass = 4130 * (x[3]*x[1] + x[4]*x[2] + x[0]*3) * 3
 
         # First eigen_mode

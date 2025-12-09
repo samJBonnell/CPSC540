@@ -35,7 +35,6 @@
 *.cae
 *.dat
 *.fil
-*.jsonl
 *.json
 *.rpy.*
 *.rec
