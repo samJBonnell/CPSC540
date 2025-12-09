@@ -139,7 +139,7 @@ def main():
         return
     
     X, y = data_loader(args.path)
-    parameter_names = ["t_panel", "t_longitudinal_web", "t_longitudinal_flange", "t_transverse_web", "t_transverse_flange"]
+    parameter_names = ["num_longitudinal", "t_panel", "t_longitudinal_web", "t_longitudinal_flange", "t_transverse_web", "t_transverse_flange"]
     
     num_samples = X.shape[0]
     num_features = X.shape[1]

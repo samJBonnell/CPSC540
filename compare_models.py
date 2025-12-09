@@ -74,6 +74,7 @@ file_paths = [
     # 'opt_results/mlp_1_200_F.npy',
     # 'opt_results/mlp_2_200_F.npy',
     # 'opt_results/mlp_3_2000_F.npy',
+    'opt_results/mlp_0_2000_F.npy',
     'opt_results/mlp_3_20000_F.npy',
     'opt_results/mlp_4_20000_F.npy',
 ]
