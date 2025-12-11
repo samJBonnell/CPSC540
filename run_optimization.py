@@ -27,21 +27,10 @@ model = None
 X_normalizer = None
 y_normalizer = None
 model_type = None
-convolution_size = 80
+convolution_size = 20
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-class EigenBuckling_MassProblem(ElementwiseProblem):
-    def __init__(self):
-        super().__init__(n_var=6,
-                        n_obj=2,
-                        n_ieq_constr=0,
-                        xl=np.array([1.0, 0.001, 0.001, 0.001, 0.025, 0.050]),
-                        xu=np.array([8.0, 0.010, 0.010, 0.010, 0.500, 0.125])
-                        # xl=np.array([0.001, 0.001, 0.001, 0.025, 0.050]),
-                        # xu=np.array([0.010, 0.010, 0.010, 0.500, 0.125])
-                        )
-    
-    def _evaluate(self, x, out, *args, **kwargs):
+def model_prediction(x):
         global model, X_normalizer, y_normalizer, model_type, convolution_size, device
         
         x_copy = np.array(x)
@@ -68,6 +57,48 @@ class EigenBuckling_MassProblem(ElementwiseProblem):
             # Denormalize predictions
             if y_normalizer is not None:
                 predictions = y_normalizer.denormalize(predictions.unsqueeze(0).cpu().numpy())
+
+        return predictions
+
+class UC1(ElementwiseProblem):
+    def __init__(self):
+        super().__init__(n_var=6,
+                        n_obj=2,
+                        n_ieq_constr=0,
+                        xl=np.array([1.0, 0.001, 0.001, 0.001, 0.015, 0.010]),
+                        xu=np.array([8.0, 0.100, 0.100, 0.100, 0.750, 0.500])
+                        )
+    
+    def _evaluate(self, x, out, *args, **kwargs):
+        predictions = model_prediction(x)
+        
+        # Mass
+        mass = 4130 * (x[0]*(x[4]*x[2] + x[5]*x[3]) + x[1]*3) * 3
+
+        # First eigen_mode
+        eigen_buckling = predictions[0][0] if len(predictions) > 0 else 1.0
+        
+        # Objective 1: Minimize mass
+        f1 = mass
+        
+        # Objective 2: Maximize buckling strength
+        f2 = -eigen_buckling
+        
+        out["F"] = [f1, f2]
+
+class UC2(ElementwiseProblem):
+    def __init__(self):
+        super().__init__(n_var=6,
+                        n_obj=3,
+                        n_ieq_constr=0,
+                        xl=np.array([1.0, 0.001, 0.001, 0.001, 0.015, 0.010]),
+                        xu=np.array([8.0, 0.100, 0.100, 0.100, 0.750, 0.500])
+                        # xl=np.array([0.001, 0.001, 0.001, 0.025, 0.050]),
+                        # xu=np.array([0.010, 0.010, 0.010, 0.500, 0.125])
+                        )
+    
+    def _evaluate(self, x, out, *args, **kwargs):
+        predictions = model_prediction(x)
         
         # Mass
         mass = 4130 * (x[0]*(x[4]*x[2] + x[5]*x[3]) + x[1]*3) * 3
@@ -81,16 +112,51 @@ class EigenBuckling_MassProblem(ElementwiseProblem):
         
         # Objective 2: Maximize buckling strength
         f2 = -eigen_buckling
+
+        # Objective 3: Maximize difference between first and second eigenmode
+        f3 = -abs(predictions[0][0] - predictions[0][1]) if len(predictions[0]) > 1 else 0
         
-        out["F"] = [f1, f2]
+        out["F"] = [f1, f2, f3]
+
+class C1(ElementwiseProblem):
+    def __init__(self):
+        super().__init__(n_var=6,
+                        n_obj=3,
+                        n_ieq_constr=1,
+                        xl=np.array([1.0, 0.001, 0.001, 0.001, 0.015, 0.010]),
+                        xu=np.array([8.0, 0.100, 0.100, 0.100, 0.750, 0.500])
+                        )
+    
+    def _evaluate(self, x, out, *args, **kwargs):
+        predictions = model_prediction(x)
+        
+        # Mass
+        mass = 4130 * (x[0]*(x[4]*x[2] + x[5]*x[3]) + x[1]*3) * 3
+        # mass = 4130 * (x[3]*x[1] + x[4]*x[2] + x[0]*3) * 3
+
+        # First eigen_mode
+        eigen_buckling = predictions[0][0] if len(predictions) > 0 else 1.0
+        
+        # Objective 1: Minimize mass
+        f1 = mass
+        
+        # Objective 2: Maximize buckling strength
+        f2 = -eigen_buckling
+
+        # Objective 3: Maximize difference between first and second eigenmode
+        f3 = -abs(predictions[0][0] - predictions[0][1]) if len(predictions[0]) > 1 else 0
+        g1 = 200 - abs(f3)
+        
+        out["F"] = [f1, f2, f3]
+        out["G"] = [g1]
 
 
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Optimize using ML surrogate model')
     
-    parser.add_argument('--model_name', type=str, default='mlp_0',
-                        help='The name of the saved model (default: mlp_0)')
+    parser.add_argument('--model_name', type=str, default='mlp_2_16_LeakyReLU_0_05',
+                        help='The name of the saved model (default: mlp_2_16_LeakyReLU_0_05)')
     
     parser.add_argument('--population', type=int, default=100,
                         help='Population size for NSGA-II (default: 100)')
@@ -115,6 +181,10 @@ def parse_args():
     
     parser.add_argument('--plot', action='store_true',
                     help='Generate plots of Pareto front and solution space')
+    
+    parser.add_argument('--conv_size', type=int, default=20,
+                    help='Size of the input convolution (default: 20)')
+    
 
     return parser.parse_args()
 
@@ -131,7 +201,7 @@ def main():
     # Load the appropriate model
     if "cnn" in args.model_name:
         model_type = "cnn"
-        convolution_size = 80
+        convolution_size = args.conv_size
         model, X_normalizer, y_normalizer = EncoderToVector.load(f'models/{args.model_name}.pth')
         print(f"Loaded CNN model with convolution size {convolution_size}x{convolution_size}")
     elif "mlp" in args.model_name:
@@ -155,7 +225,7 @@ def main():
     )
     
     # Create the problem instance
-    obj_func = EigenBuckling_MassProblem()
+    obj_func = UC2()
     
     optimizer = Optimizer(algorithm=nsga2_alg, objective=obj_func)
 

@@ -131,6 +131,11 @@ def main():
     # parameter_names = ["t_panel", "t_longitudinal_web", "t_longitudinal_flange", "t_transverse_web", "t_transverse_flange"]
 
     print(f"\nTotal samples: {X.shape[0]}")
+
+    for i in range(y.shape[0]):
+        for j in range(y.shape[1]):
+            if y[i,j] < 0:
+                print(f"i: {i}, j: {j}, val: {y[i,j]}")
     
     # Step 1: Hold out test set (never used for training or hyperparameter tuning)
     # Using random_state ensures this split is consistent across runs
