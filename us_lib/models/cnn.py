@@ -16,7 +16,7 @@ class EncoderBlock(nn.Module):
             layers.extend([
                 nn.Conv2d(in_ch, out_ch, kernel_size=kernel_size, padding=kernel_size//2),
                 nn.BatchNorm2d(out_ch),
-                nn.ReLU(),
+                nn.LeakyReLU(),
                 nn.AvgPool2d(kernel_size=3, stride=2, padding=1)
             ])
             in_ch = out_ch
@@ -64,7 +64,7 @@ class Bridge(nn.Module):
         self.bridge = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU()
+            nn.LeakyReLU()
         )
     
     def forward(self, x):
@@ -108,7 +108,7 @@ class EncoderToVector(nn.Module):
         # Configurable FC layers
         self.fc1 = nn.Linear(bridge_channels, fc_hidden)
         self.fc2 = nn.Linear(fc_hidden, N)
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU()
         self.dropout = nn.Dropout(dropout)
     
     def forward(self, x):
