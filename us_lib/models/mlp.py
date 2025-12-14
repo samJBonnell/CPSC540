@@ -34,8 +34,9 @@ class MLP(nn.Module):
         return x
     
     @classmethod
-    def load(cls, checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, weights_only=False)
+    def load(cls, path):
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        checkpoint = torch.load(path, weights_only=False, map_location=device)
         model = cls(
             input_size=checkpoint['input_size'],
             num_layers=checkpoint['num_layers'],

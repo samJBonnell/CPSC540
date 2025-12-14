@@ -27,7 +27,7 @@ model = None
 X_normalizer = None
 y_normalizer = None
 model_type = None
-convolution_size = 20
+convolution_size = 16
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def model_prediction(x):
@@ -119,7 +119,7 @@ class U2(ElementwiseProblem):
 class C1(ElementwiseProblem):
     def __init__(self):
         super().__init__(n_var=6,
-                        n_obj=3,
+                        n_obj=2,
                         n_ieq_constr=1,
                         xl=np.array([1.0, 0.001, 0.001, 0.001, 0.015, 0.010]),
                         xu=np.array([8.0, 0.100, 0.100, 0.100, 0.750, 0.500])
@@ -145,7 +145,7 @@ class C1(ElementwiseProblem):
         f3 = -abs(predictions[0][0] - predictions[0][1]) if len(predictions[0]) > 1 else 0
         g1 = 250 - abs(f3)
         
-        out["F"] = [f1, f2, f3]
+        out["F"] = [f1, f2]
         out["G"] = [g1]
 
 class C2(ElementwiseProblem):
@@ -176,9 +176,8 @@ class C2(ElementwiseProblem):
         # Objective 3: Maximize difference between first and second eigenmode
         f3 = -abs(predictions[0][0] - predictions[0][1]) if len(predictions[0]) > 1 else 0
 
-        # f > 1495 && 1505 > f -> 0 > 1495 - f && 0 > f - 1505
-        g1 = 1495 - abs(f3)
-        g2 = abs(f3) - 1505
+        g1 = 1499 - abs(f2)
+        g2 = abs(f2) - 1501
 
         out["F"] = [f1, f2, f3]
         out["G"] = [g1, g2]
@@ -188,8 +187,8 @@ def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Optimize using ML surrogate model')
     
-    parser.add_argument('--model_name', type=str, default='mlp_2_16_LeakyReLU_0_05',
-                        help='The name of the saved model (default: mlp_2_16_LeakyReLU_0_05)')
+    parser.add_argument('--model_name', type=str, default='',
+                        help='The name of the saved model (default: )')
     
     parser.add_argument('--population', type=int, default=100,
                         help='Population size for NSGA-II (default: 100)')
@@ -218,6 +217,9 @@ def parse_args():
     parser.add_argument('--conv_size', type=int, default=20,
                     help='Size of the input convolution (default: 20)')
     
+    parser.add_argument('--problem', type=str, default='U1',
+                    help='Optimization problem (default: U1)')
+
 
     return parser.parse_args()
 
@@ -258,7 +260,16 @@ def main():
     )
     
     # Create the problem instance
-    obj_func = UC2()
+    # obj_func = U1()
+    problem = args.problem
+    if problem == 'U1':
+        obj_func = U1()
+    if problem == 'U2':
+        obj_func = U2()
+    if problem == 'C1':
+        obj_func = C1()
+    if problem == 'C2':
+        obj_func = C2()
     
     optimizer = Optimizer(algorithm=nsga2_alg, objective=obj_func)
 
