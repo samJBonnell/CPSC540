@@ -990,7 +990,7 @@ def plot_pareto_all_points(file_paths, labels=None, objective_names=None,
     return plt.gcf()
 
 
-def get_pareto_front_hull(x_vals, y_vals):
+def get_pareto_front_hull(x_vals, y_vals, x_negate : False, y_negate : False):
     """
     Get the points forming the lower-left boundary of the point cloud
     This extracts the Pareto front for minimization objectives
@@ -1016,12 +1016,28 @@ def get_pareto_front_hull(x_vals, y_vals):
     
     # Extract lower envelope (Pareto front for minimization)
     front_points = [sorted_points[0]]  # Start with leftmost point
+
+    # We want to start at the front, and for each point that is higher or more to the right, we want to add it. 
+    ptr_1 = 0
+    ptr_2 = 1
+    for i in range(len(sorted_points) - 1):
+        if y_negate is False and sorted_points[ptr_1, 1] > sorted_points[ptr_2, 1]:
+            front_points.append(sorted_points[ptr_2])
+            ptr_1 = ptr_2
+        if y_negate is True and sorted_points[ptr_1, 1] < sorted_points[ptr_2, 1]:
+            front_points.append(sorted_points[ptr_2])
+            ptr_1 = ptr_2
+        
+        ptr_2 += 1
+        
     
-    for point in sorted_points[1:]:
-        # Add point if it has a lower y-value than the current front
-        if point[1] < front_points[-1][1]:
-            front_points.append(point)
-    
+    # for point in sorted_points[1:]:
+    #     # Add point if it has a lower y-value than the current front
+    #     if point[1] < front_points[-1][1] and x_negate is False:
+    #         front_points.append(point)
+    #     if point[1] > front_points[-1][1] and x_negate is True:
+    #         front_points.append(point)
+
     front_array = np.array(front_points)
     return front_array[:, 0], front_array[:, 1]
 
@@ -1193,7 +1209,7 @@ def plot_pareto_front_only(file_paths, labels=None, objective_names=None,
             elif hull_type == 'concave':
                 x_sorted, y_sorted = get_concave_hull(obj1, obj2, k=k)
             else:  # 'pareto'
-                x_sorted, y_sorted = get_pareto_front_hull(obj1, obj2)
+                x_sorted, y_sorted = get_pareto_front_hull(obj1, obj2, x_negate, y_negate)
             
             # Plot Pareto front
             plt.scatter(x_sorted, y_sorted, 
@@ -1280,7 +1296,7 @@ if __name__ == "__main__":
         objective_names=objective_names,
         obj_indices=(0, 2),
         negate_objectives=(False, True),
-        hull_type='concave'
+        hull_type='pareto'
     )
     
     # plt.savefig('opt_results/pareto_comparison.png', dpi=300, bbox_inches='tight')

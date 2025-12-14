@@ -60,7 +60,7 @@ def model_prediction(x):
 
         return predictions
 
-class UC1(ElementwiseProblem):
+class U1(ElementwiseProblem):
     def __init__(self):
         super().__init__(n_var=6,
                         n_obj=2,
@@ -86,15 +86,13 @@ class UC1(ElementwiseProblem):
         
         out["F"] = [f1, f2]
 
-class UC2(ElementwiseProblem):
+class U2(ElementwiseProblem):
     def __init__(self):
         super().__init__(n_var=6,
                         n_obj=3,
                         n_ieq_constr=0,
                         xl=np.array([1.0, 0.001, 0.001, 0.001, 0.015, 0.010]),
                         xu=np.array([8.0, 0.100, 0.100, 0.100, 0.750, 0.500])
-                        # xl=np.array([0.001, 0.001, 0.001, 0.025, 0.050]),
-                        # xu=np.array([0.010, 0.010, 0.010, 0.500, 0.125])
                         )
     
     def _evaluate(self, x, out, *args, **kwargs):
@@ -145,10 +143,45 @@ class C1(ElementwiseProblem):
 
         # Objective 3: Maximize difference between first and second eigenmode
         f3 = -abs(predictions[0][0] - predictions[0][1]) if len(predictions[0]) > 1 else 0
-        g1 = 200 - abs(f3)
+        g1 = 250 - abs(f3)
         
         out["F"] = [f1, f2, f3]
         out["G"] = [g1]
+
+class C2(ElementwiseProblem):
+    def __init__(self):
+        super().__init__(n_var=6,
+                        n_obj=3,
+                        n_ieq_constr=2,
+                        xl=np.array([1.0, 0.001, 0.001, 0.001, 0.015, 0.010]),
+                        xu=np.array([8.0, 0.100, 0.100, 0.100, 0.750, 0.500])
+                        )
+    
+    def _evaluate(self, x, out, *args, **kwargs):
+        predictions = model_prediction(x)
+        
+        # Mass
+        mass = 4130 * (x[0]*(x[4]*x[2] + x[5]*x[3]) + x[1]*3) * 3
+        # mass = 4130 * (x[3]*x[1] + x[4]*x[2] + x[0]*3) * 3
+
+        # First eigen_mode
+        eigen_buckling = predictions[0][0] if len(predictions) > 0 else 1.0
+        
+        # Objective 1: Minimize mass
+        f1 = mass
+        
+        # Objective 2: Maximize buckling strength
+        f2 = -eigen_buckling
+
+        # Objective 3: Maximize difference between first and second eigenmode
+        f3 = -abs(predictions[0][0] - predictions[0][1]) if len(predictions[0]) > 1 else 0
+
+        # f > 1495 && 1505 > f -> 0 > 1495 - f && 0 > f - 1505
+        g1 = 1495 - abs(f3)
+        g2 = abs(f3) - 1505
+
+        out["F"] = [f1, f2, f3]
+        out["G"] = [g1, g2]
 
 
 def parse_args():
